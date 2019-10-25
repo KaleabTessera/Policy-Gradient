@@ -25,10 +25,7 @@ class SimplePolicy(nn.Module):
         return F.softmax(x)
 
     def act(self, state):
-        action_probs = self.forward(torch.from_numpy(state).float().to(device))
-
-    def act(self, state):
-        state = torch.from_numpy(state).float().unsqueeze(0)
+        state = torch.from_numpy(state).float().to(device).unsqueeze(0)
         log_probs = self.forward(state)
         action_distribution = torch.distributions.Categorical(log_probs)
         action = action_distribution.sample()
@@ -56,6 +53,7 @@ def reinforce(env, policy_model, seed, learning_rate,
     env.seed(seed)
 
     scores = []
+    policy_model = policy_model.to(device)
     optimizer = optim.Adam(policy_model.parameters(), lr=learning_rate)
     scores_deque = deque(maxlen=100)
     for e in np.arange(start=1, stop=number_episodes+1):
@@ -75,6 +73,8 @@ def reinforce(env, policy_model, seed, learning_rate,
         scores.append(total_rewards)
         scores_deque.append(total_rewards)
         G = compute_returns(rewards, gamma)
+        # saved_probs = torch.cat(saved_probs)
+        # policy_loss = -torch.sum(saved_probs*G)
         policy_loss.extend([-log_prob*G for log_prob in saved_probs])
         policy_loss = torch.cat(policy_loss).sum()
 
@@ -93,11 +93,18 @@ def reinforce(env, policy_model, seed, learning_rate,
             break
     return policy_model, scores
 
+# This function adapted from https://github.com/andrecianflone/rl_at_ammi
+
 
 def compute_returns_naive_baseline(rewards, gamma):
-    returns = compute_returns(rewards,gamma)
-    mean = np.mean(returns,axis=0)
-    std = np.std(returns,axis=0)
+    r = 0
+    returns = []
+    for step in reversed(range(len(rewards))):
+        r = rewards[step] + gamma * r
+        returns.insert(0, r)
+    returns = np.array(returns)
+    mean = returns.mean(axis=0)
+    std = returns.std(axis=0)
     returns = (returns - mean)/std
     return returns
 
@@ -112,6 +119,7 @@ def reinforce_naive_baseline(env, policy_model, seed, learning_rate,
     env.seed(seed)
 
     scores = []
+    policy_model = policy_model.to(device)
     optimizer = optim.Adam(policy_model.parameters(), lr=learning_rate)
     scores_deque = deque(maxlen=100)
     for e in np.arange(start=1, stop=number_episodes+1):
@@ -131,16 +139,20 @@ def reinforce_naive_baseline(env, policy_model, seed, learning_rate,
         scores.append(total_rewards)
         scores_deque.append(total_rewards)
         G = compute_returns_naive_baseline(rewards, gamma)
-        policy_loss.extend([-log_prob*G for log_prob in saved_probs])
-        policy_loss = torch.cat(policy_loss).sum()
+        G = torch.from_numpy(G).float().to(device)
+        saved_probs = torch.cat(saved_probs)
+        policy_loss = -torch.sum(saved_probs*G)
+        # policy_loss.extend([-log_prob*G for log_prob in saved_probs])
+        # policy_loss = torch.cat(policy_loss).sum()
 
         optimizer.zero_grad()
         policy_loss.backward()
         optimizer.step()
     # # report the score to check that we're making progress
-    if episode % 50 == 0 and verbose:
-        print('Episode {}\tAverage Score: {:.2f}'.format(episode, np.mean(scores_deque)))
-    return policy, scores
+    if e % 50 == 0 and verbose:
+        print('Episode {}\tAverage Score: {:.2f}'.format(
+            e, np.mean(scores_deque)))
+    return policy_model, scores
 
 
 def run_reinforce():
@@ -175,20 +187,21 @@ def investigate_variance_in_reinforce():
     window_size = 50
     for seed in seeds:
         _, score = reinforce(env=env, policy_model=policy_model, seed=int(seed), learning_rate=1e-2,
-                              number_episodes=1500,
-                              max_episode_length=1000,
-                              gamma=1.0,
-                              verbose=False)
+                             number_episodes=1500,
+                             max_episode_length=1000,
+                             gamma=1.0,
+                             verbose=False)
         all_scores_over_runs.append(score)
-        print(f"Seed:  {seed}  completed.")
-    
-    moving_avg_over_runs =  np.array([moving_average(score, 50) for score in all_scores_over_runs])
+        print(f"Reinforce - Seed:  {seed}  completed.")
+
+    moving_avg_over_runs = np.array(
+        [moving_average(score, 50) for score in all_scores_over_runs])
     mean = moving_avg_over_runs.mean(axis=0)
     std = moving_avg_over_runs.std(axis=0)
 
     plt.plot(mean, '-', color='blue')
     x = np.arange(1, len(mean)+1)
-    plt.fill_between(x, mean-std, mean+std,color='blue', alpha=0.2)
+    plt.fill_between(x, mean-std, mean+std, color='blue', alpha=0.2)
     plt.ylabel('Score')
     plt.xlabel('Episode #')
     plt.title('REINFORCE averaged over 5 seeds')
@@ -202,31 +215,36 @@ def run_reinforce_with_naive_baseline(mean, std):
 
     np.random.seed(53)
     seeds = np.random.randint(1000, size=5)
-    
+    policy_model = SimplePolicy(
+        s_size=env.observation_space.shape[0], h_size=50, a_size=env.action_space.n)
+
     all_scores_over_runs = []
     window_size = 50
     for seed in seeds:
         _, score = reinforce_naive_baseline(env=env, policy_model=policy_model, seed=int(seed), learning_rate=1e-2,
-                              number_episodes=1500,
-                              max_episode_length=1000,
-                              gamma=1.0,
-                              verbose=False)
+                                            number_episodes=1500,
+                                            max_episode_length=1000,
+                                            gamma=1.0,
+                                            verbose=False)
         all_scores_over_runs.append(score)
-        print(f"Seed:  {seed}  completed.")
-    
-    moving_avg_over_runs =  np.array([moving_average(score, 50) for score in all_scores_over_runs])
+        print(f"Reinforce with Naive Baseline - Seed:  {seed}  completed.")
+
+    moving_avg_over_runs = np.array(
+        [moving_average(score, 50) for score in all_scores_over_runs])
     mean_baseline = moving_avg_over_runs.mean(axis=0)
     std_baseline = moving_avg_over_runs.std(axis=0)
 
     # Reinforce
-    plt.plot(mean, '-', color='blue',label='REINFORCE')
+    plt.plot(mean, '-', color='blue', label='REINFORCE')
     x = np.arange(1, len(mean)+1)
-    plt.fill_between(x, mean-std, mean+std,color='blue', alpha=0.2)
+    plt.fill_between(x, mean-std, mean+std, color='blue', alpha=0.2)
 
     # Reinforce with learned baseline
-    plt.plot(mean_baseline, '-', color='orange',label='REINFORCE with baseline')
+    plt.plot(mean_baseline, '-', color='orange',
+             label='REINFORCE with baseline')
     x = np.arange(1, len(mean)+1)
-    plt.fill_between(x, mean_baseline-std_baseline, mean_baseline+std_baseline,color='orange', alpha=0.2)
+    plt.fill_between(x, mean_baseline-std_baseline,
+                     mean_baseline+std_baseline, color='orange', alpha=0.2)
 
     plt.ylabel('Score')
     plt.xlabel('Episode #')
@@ -234,8 +252,7 @@ def run_reinforce_with_naive_baseline(mean, std):
     plt.show()
 
 
-
 if __name__ == '__main__':
-    run_reinforce()
+    # run_reinforce()
     mean, std = investigate_variance_in_reinforce()
     run_reinforce_with_naive_baseline(mean, std)

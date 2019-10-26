@@ -174,7 +174,8 @@ def run_reinforce():
     plt.xlabel('Episode #')
     plt.title('REINFORCE learning curve - CartPole-v1')
     plt.legend()
-    plt.show()
+    plt.savefig('q1_reinforce_learning_curve.png')
+    # plt.show()
 
 
 def investigate_variance_in_reinforce():
@@ -205,7 +206,8 @@ def investigate_variance_in_reinforce():
     plt.ylabel('Score')
     plt.xlabel('Episode #')
     plt.title('REINFORCE averaged over 5 seeds')
-    plt.show()
+    plt.savefig('q1_reinforce_5_runs_average.png')
+    # plt.show()
 
     return mean, std
 
@@ -248,11 +250,13 @@ def run_reinforce_with_naive_baseline(mean, std):
 
     plt.ylabel('Score')
     plt.xlabel('Episode #')
-    plt.title('REINFORCE averaged over 5 seeds')
-    plt.show()
+    plt.title('REINFORCE vs REINFORCE with Baseline (averaged over 5 seeds)')
+    plt.legend()
+    plt.savefig('q1_reinforce_vs_reinforce_with_baseline_5_runs_average.png')
+    # plt.show()
 
 
 if __name__ == '__main__':
-    # run_reinforce()
+    run_reinforce()
     mean, std = investigate_variance_in_reinforce()
     run_reinforce_with_naive_baseline(mean, std)

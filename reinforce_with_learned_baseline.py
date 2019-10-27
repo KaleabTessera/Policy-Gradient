@@ -13,7 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class PolicyValueNetwork(nn.Module):
-    def __init__(self, input_size=8, hidden_size=128,
+    def __init__(self, input_size=8, hidden_size=256,
                  num_hidden_layers=0, policy_output_size=4, value_output_size=1):
         super(PolicyValueNetwork, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
@@ -112,8 +112,8 @@ def reinforce_learned_baseline(env, policy_model, seed, learning_rate,
         policy_loss = -torch.sum(saved_probs*delta.detach())
 
         # Loss for value
-        value_loss = 0.5*torch.sum(delta**2)
-        # value_loss = torch.sum(torch.abs(delta))
+        # value_loss = 0.5*torch.sum(delta**2)
+        value_loss = torch.sum(torch.abs(delta))
 
         # compute the composite loss
         loss = policy_loss + value_loss
@@ -137,7 +137,6 @@ def main():
     # hyper-parameters
     gamma = 0.99
     learning_rate = 0.02
-    # seed = 214
     seed = 401
     number_episodes = 1250
     policy_model = PolicyValueNetwork()

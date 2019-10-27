@@ -20,8 +20,8 @@ class SimplePolicy(nn.Module):
         self.fc2 = nn.Linear(h_size, a_size)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        out = F.relu(self.fc1(x))
+        out = self.fc2(out)
         return F.softmax(x)
 
     def act(self, state):

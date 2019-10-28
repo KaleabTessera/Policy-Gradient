@@ -13,19 +13,18 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class PolicyValueNetwork(nn.Module):
-    def __init__(self, input_size=8, hidden_size=256,
-                 num_hidden_layers=0, policy_output_size=4, value_output_size=1):
+    def __init__(self, input_size=8, hidden_size=128,
+                 num_hidden_layers=1, policy_output_size=4, value_output_size=1):
         super(PolicyValueNetwork, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu1 = nn.ReLU()
         self.hidden_layers = nn.ModuleList()
-        
+
         # Hidden layers
         for i in np.arange(num_hidden_layers - 1):
             self.hidden_layers.append(nn.Linear(
                 hidden_size, hidden_size))
             self.hidden_layers.append(nn.ReLU())
-
 
         # Define simple policy head
         self.policy = nn.Sequential(
@@ -52,7 +51,6 @@ class PolicyValueNetwork(nn.Module):
         return action.item(), action_distribution.log_prob(action), value
 
 
-
 def compute_returns(rewards, gamma):
     r = 0
     returns = []
@@ -69,15 +67,8 @@ def compute_returns(rewards, gamma):
 def reinforce_learned_baseline(env, policy_model, seed, learning_rate,
                                number_episodes,
                                gamma, verbose=False):
-    # set random seeds (for reproducibility)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    env.seed(seed)
-    random.seed(seed)
 
     max_episode_length = 1000
-
     scores = []
     policy_model = policy_model.to(device)
     optimizer = optim.Adam(policy_model.parameters(), lr=learning_rate)
@@ -110,13 +101,14 @@ def reinforce_learned_baseline(env, policy_model, seed, learning_rate,
 
         # Loss for policy
         policy_loss = -torch.sum(saved_probs*delta.detach())
+        # print(policy_loss)
 
         # Loss for value
-        # value_loss = 0.5*torch.sum(delta**2)
-        value_loss = torch.sum(torch.abs(delta))
+        value_loss = 0.5*torch.sum(delta**2)
 
         # compute the composite loss
         loss = policy_loss + value_loss
+        # print(loss)
 
         optimizer.zero_grad()
         loss.backward()
@@ -139,6 +131,13 @@ def main():
     learning_rate = 0.02
     seed = 401
     number_episodes = 1250
+
+    # set random seeds (for reproducibility)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    env.seed(seed)
+    random.seed(seed)
     policy_model = PolicyValueNetwork()
 
     net, scores = reinforce_learned_baseline(env, policy_model, seed, learning_rate,

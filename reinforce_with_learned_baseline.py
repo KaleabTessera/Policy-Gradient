@@ -11,7 +11,7 @@ from torch.distributions import Categorical
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
+# Some parts adapted from https://github.com/andrecianflone/rl_at_ammi
 class PolicyValueNetwork(nn.Module):
     def __init__(self, input_size=8, hidden_size=128,
                  num_hidden_layers=1, policy_output_size=4, value_output_size=1):
@@ -101,14 +101,12 @@ def reinforce_learned_baseline(env, policy_model, seed, learning_rate,
 
         # Loss for policy
         policy_loss = -torch.sum(saved_probs*delta.detach())
-        # print(policy_loss)
 
         # Loss for value
         value_loss = 0.5*torch.sum(delta**2)
 
-        # compute the composite loss
+        # total loss
         loss = policy_loss + value_loss
-        # print(loss)
 
         optimizer.zero_grad()
         loss.backward()
@@ -146,7 +144,7 @@ def main():
 
     # Record trained net
     env = gym.wrappers.Monitor(
-        env, './video/', force=True)
+        env, './lunar_video_reinforce_learned_baseline/', force=True)
     state = env.reset()
     for t in range(2000):
         state = torch.from_numpy(state).float().to(device)

@@ -13,6 +13,7 @@ import torch.optim as optim
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+# Some parts adapted from https://github.com/andrecianflone/rl_at_ammi
 class SimplePolicy(nn.Module):
     def __init__(self, s_size=4, h_size=16, a_size=2):
         super(SimplePolicy, self).__init__()
@@ -22,7 +23,7 @@ class SimplePolicy(nn.Module):
     def forward(self, x):
         out = F.relu(self.fc1(x))
         out = self.fc2(out)
-        return F.softmax(x)
+        return F.softmax(out)
 
     def act(self, state):
         state = torch.from_numpy(state).float().to(device).unsqueeze(0)
@@ -46,11 +47,6 @@ def reinforce(env, policy_model, seed, learning_rate,
               number_episodes,
               max_episode_length,
               gamma, verbose=True):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    env.seed(seed)
 
     scores = []
     policy_model = policy_model.to(device)
@@ -73,8 +69,6 @@ def reinforce(env, policy_model, seed, learning_rate,
         scores.append(total_rewards)
         scores_deque.append(total_rewards)
         G = compute_returns(rewards, gamma)
-        # saved_probs = torch.cat(saved_probs)
-        # policy_loss = -torch.sum(saved_probs*G)
         policy_loss.extend([-log_prob*G for log_prob in saved_probs])
         policy_loss = torch.cat(policy_loss).sum()
 
@@ -92,8 +86,6 @@ def reinforce(env, policy_model, seed, learning_rate,
                 e, np.mean(scores_deque)))
             break
     return policy_model, scores
-
-# This function adapted from https://github.com/andrecianflone/rl_at_ammi
 
 
 def compute_returns_naive_baseline(rewards, gamma):
@@ -142,8 +134,6 @@ def reinforce_naive_baseline(env, policy_model, seed, learning_rate,
         G = torch.from_numpy(G).float().to(device)
         saved_probs = torch.cat(saved_probs)
         policy_loss = -torch.sum(saved_probs*G)
-        # policy_loss.extend([-log_prob*G for log_prob in saved_probs])
-        # policy_loss = torch.cat(policy_loss).sum()
 
         optimizer.zero_grad()
         policy_loss.backward()
@@ -157,9 +147,16 @@ def reinforce_naive_baseline(env, policy_model, seed, learning_rate,
 
 def run_reinforce():
     env = gym.make('CartPole-v1')
+    seed = 42
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    env.seed(seed)
+
     policy_model = SimplePolicy(
         s_size=env.observation_space.shape[0], h_size=50, a_size=env.action_space.n)
-    policy, scores = reinforce(env=env, policy_model=policy_model, seed=42, learning_rate=1e-2,
+    policy, scores = reinforce(env=env, policy_model=policy_model, seed=seed, learning_rate=1e-2,
                                number_episodes=1500,
                                max_episode_length=1000,
                                gamma=1.0,

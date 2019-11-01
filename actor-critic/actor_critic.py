@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def ddpg(n_episodes=2000, max_t=1000):
     scores_deque = deque(maxlen=100)
     scores = []
@@ -73,28 +74,25 @@ if __name__ == '__main__':
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
+    args = parser.parse_args()
     # hyper-parameters
     number_episodes = 2000
     max_iter = 700
     env = gym.make('BipedalWalker-v2')
     agent = Agent(
         state_size=env.observation_space.shape[0], action_size=env.action_space.shape[0], random_seed=seed)
-
-    # set random seeds (for reproducibility)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    env.seed(seed)
-    random.seed(seed)
-
-    scores = ddpg(number_episodes, max_iter)
-    fig = plt.figure()
-    plt.title("Score (Returns) per episode")
-    plt.plot(np.arange(1, len(scores)+1), scores)
-    plt.ylabel('Score')
-    plt.xlabel('Episode #')
-    plt.savefig('Score_DDPG.png')
-    # plt.show()
+    if(args.load_model is False):
+        scores = ddpg(number_episodes, max_iter)
+        fig = plt.figure()
+        plt.title("Score (Returns) per episode")
+        plt.plot(np.arange(1, len(scores)+1), scores)
+        plt.ylabel('Score')
+        plt.xlabel('Episode #')
+        plt.savefig('Score_DDPG.png')
+        # plt.show()
+    else:
+        agent.actor_local.load_state_dict(torch.load('checkpoint_actor.pth'))
+        agent.critic_local.load_state_dict(torch.load('checkpoint_critic.pth'))
 
     env = gym.wrappers.Monitor(
         env, './bipedal_video/', force=True)

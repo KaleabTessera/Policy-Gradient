@@ -42,7 +42,7 @@ def ddpg(n_episodes=2000, max_t=1000):
         else:
             env.stats_recorder.save_complete()
             env.stats_recorder.done = True
-        # env.monitor.close()
+
 
         scores_deque.append(score)
         scores.append(score)
@@ -62,10 +62,6 @@ if __name__ == '__main__':
     parser.add_argument(
         "--load-model", action="store_true", default=False, help="Load a trained model or start from scratch"
     )
-     parser.add_argument(
-        "--load-model-continue", action="store_true", default=True, help="Load and continue"
-    )
-
     print(f"Device :{device}")
 
     env = gym.make('BipedalWalker-v2')
@@ -90,21 +86,23 @@ if __name__ == '__main__':
     env = gym.make('BipedalWalker-v2')
     env = gym.wrappers.Monitor(
         env, './bipedal_video/',  video_callable=lambda episode_id: episode_id % 50 == 0, force=True)
-    # env._max_episode_steps = max_iter
+
     agent = Agent(
         state_size=env.observation_space.shape[0], action_size=env.action_space.shape[0], random_seed=seed)
-    if(args.load_model is False):
-        scores = ddpg(number_episodes, max_iter)
-        fig = plt.figure()
-        plt.title("Score (Returns) per episode")
-        plt.plot(np.arange(1, len(scores)+1), scores)
-        plt.ylabel('Score')
-        plt.xlabel('Episode #')
-        plt.savefig('Score_DDPG.png')
-        # plt.show()
-    else:
+    if(args.load_model is True):
+        print("Loading")
         agent.actor_local.load_state_dict(torch.load('checkpoint_actor.pth'))
         agent.critic_local.load_state_dict(torch.load('checkpoint_critic.pth'))
+    
+    scores = ddpg(number_episodes, max_iter)
+    fig = plt.figure()
+    plt.title("Score (Returns) per episode")
+    plt.plot(np.arange(1, len(scores)+1), scores)
+    plt.ylabel('Score')
+    plt.xlabel('Episode #')
+    plt.savefig('Score_DDPG.png')
+    # plt.show()
+       
 
    
     state = env.reset()

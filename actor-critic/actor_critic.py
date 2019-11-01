@@ -31,6 +31,7 @@ def ddpg(n_episodes=2000, max_t=1000):
         agent.reset()
         score = 0
         for t in range(max_t):
+        # while True:
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
             agent.step(state, action, reward, next_state, done)
@@ -38,6 +39,11 @@ def ddpg(n_episodes=2000, max_t=1000):
             score += reward
             if done:
                 break
+        else:
+            env.stats_recorder.save_complete()
+            env.stats_recorder.done = True
+        # env.monitor.close()
+
         scores_deque.append(score)
         scores.append(score)
         print('\rEpisode {}\tAverage Score: {:.2f}\tScore: {:.2f}'.format(
@@ -54,7 +60,10 @@ def ddpg(n_episodes=2000, max_t=1000):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DDPG')
     parser.add_argument(
-        "--load-model", action="store_true", default=True, help="Load a trained model or start from scratch"
+        "--load-model", action="store_true", default=False, help="Load a trained model or start from scratch"
+    )
+     parser.add_argument(
+        "--load-model-continue", action="store_true", default=True, help="Load and continue"
     )
 
     print(f"Device :{device}")
@@ -76,9 +85,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     # hyper-parameters
-    number_episodes = 2000
+    number_episodes = 2500
     max_iter = 700
     env = gym.make('BipedalWalker-v2')
+    env = gym.wrappers.Monitor(
+        env, './bipedal_video/',  video_callable=lambda episode_id: episode_id % 50 == 0, force=True)
+    # env._max_episode_steps = max_iter
     agent = Agent(
         state_size=env.observation_space.shape[0], action_size=env.action_space.shape[0], random_seed=seed)
     if(args.load_model is False):
@@ -94,8 +106,7 @@ if __name__ == '__main__':
         agent.actor_local.load_state_dict(torch.load('checkpoint_actor.pth'))
         agent.critic_local.load_state_dict(torch.load('checkpoint_critic.pth'))
 
-    env = gym.wrappers.Monitor(
-        env, './bipedal_video/', force=True)
+   
     state = env.reset()
     agent.reset()
     while True:

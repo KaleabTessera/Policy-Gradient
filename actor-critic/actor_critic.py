@@ -90,9 +90,9 @@ if __name__ == '__main__':
     agent = Agent(
         state_size=env.observation_space.shape[0], action_size=env.action_space.shape[0], random_seed=seed)
     if(args.load_model is True):
-        print("Loading")
-        agent.actor_local.load_state_dict(torch.load('checkpoint_actor.pth'))
-        agent.critic_local.load_state_dict(torch.load('checkpoint_critic.pth'))
+        print(f"Loading - {device}")
+        agent.actor_local.load_state_dict(torch.load('checkpoint_actor.pth',map_location=torch.device(device)))
+        agent.critic_local.load_state_dict(torch.load('checkpoint_critic.pth',map_location=torch.device(device)))
     
     scores = ddpg(number_episodes, max_iter)
     fig = plt.figure()

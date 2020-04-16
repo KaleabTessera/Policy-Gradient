@@ -1,5 +1,5 @@
 # Policy Gradient
-Implementation of the following Policy Gradient Algorithms - Reinforce and Actor Critic.
+Implementation of the following Policy Gradient Algorithms - Reinforce and Actor Critic. Some parts adapted from https://github.com/andrecianflone/rl_at_ammi .
 ## Reinforce
 ### Reinforce vs Reinforce with Baseline
 ![Rewards Per Episode](./questions/question2/q2_reinforce_with_baseline.png)
